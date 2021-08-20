@@ -17,7 +17,7 @@ public class JsonParser {
         //String json = "C:\Users\skataba1\IdeaProjects\algorithms\data\\Cell_cell.json";
 
         try {
-            var lf = Files.list(Path.of("C:\\Users\\skataba1\\IdeaProjects\\algorithms\\data\\")).collect(Collectors.toList());
+            var lf = Files.list(Path.of("C:\\Users\\skataba1\\IdeaProjects\\algorithms\\error\\")).collect(Collectors.toList());
             for (var p : lf) {
                 System.out.println("reading :" + p.getFileName());
                 obj.parse(p);
@@ -55,7 +55,7 @@ public class JsonParser {
     private void parseAppData(JSONObject appData, Map<String, Object> values){
         LinkedList<String> elemheirarchy = new LinkedList<>();
         appData.keys().forEachRemaining(appElement -> {
-            if("feeders".equals(appElement)){
+            if("physicalAntennas".equals(appElement) || "logicalAntennas".equals(appElement)){
                 System.out.println("feeders");
             }
             var elementObj = appData.get(appElement);
@@ -65,10 +65,10 @@ public class JsonParser {
                 if("customFields".equals(appElement)){
                     parseCustomFieldValues((JSONArray)elementObj, elemheirarchy, values);
                 }else {
-                    parseArrayValues(elemheirarchy, values, (JSONArray) elementObj);
+                    parseArrayValues(elemheirarchy, values, appElement, (JSONArray) elementObj);
                 }
             } else if (elementObj instanceof JSONObject) {
-                parseElementsValues(elemheirarchy, values, (JSONObject) elementObj);
+                parseElementsValues(elemheirarchy, values, appElement, (JSONObject) elementObj);
             } else {
                 values.put(appElement, elementObj);
                 elemheirarchy.removeLast();
@@ -79,7 +79,7 @@ public class JsonParser {
         });
     }
 
-    private void parseElementsValues(LinkedList<String> elemheirarchy, Map<String, Object> values, JSONObject jsonObject) {
+    private void parseElementsValues(LinkedList<String> elemheirarchy, Map<String, Object> values, String elementName, JSONObject jsonObject) {
 
         var keys = jsonObject.keySet();
         if (keys == null) return;
@@ -87,21 +87,19 @@ public class JsonParser {
         for (String key : keys) {
             elemheirarchy.add(key);
             if (jsonObject.get(key) instanceof JSONObject) {
-                parseElementsValues(elemheirarchy, values, (JSONObject) jsonObject.get(key));
+                parseElementsValues(elemheirarchy, values, key, (JSONObject) jsonObject.get(key));
             } else if(jsonObject.get(key) instanceof JSONArray){
-                parseArrayValues(elemheirarchy, values, (JSONArray) jsonObject.get(key));
+                parseArrayValues(elemheirarchy, values, key, (JSONArray) jsonObject.get(key));
             } else {
-                String heirarchy = elemheirarchy.stream().collect(Collectors.joining("-"));
+                String heirarchy = elemheirarchy.stream().collect(Collectors.joining("_"));
                 values.put(heirarchy, jsonObject.get(key));
             }
 
             elemheirarchy.removeLast();
         }
-
-
     }
 
-    private void parseArrayValues(LinkedList<String> elemheirarchy,  Map<String, Object> values, JSONArray jsonArray) {
+    private void parseArrayValues(LinkedList<String> elemheirarchy,  Map<String, Object> values, String elementName, JSONArray jsonArray) {
 
         if(jsonArray == null || jsonArray.length() == 0){
             return;
@@ -109,13 +107,13 @@ public class JsonParser {
 
         for(int elemInx =0; elemInx < jsonArray.length(); elemInx++){
             if(jsonArray.length() > 1){
-                elemheirarchy.set(elemheirarchy.size() -1, elemheirarchy.getLast() + "_" +elemInx +1);
+                elemheirarchy.set(elemheirarchy.size() -1, elementName + "_" +(elemInx +1));
             }
             var customElement = jsonArray.get(elemInx);
             if(customElement instanceof JSONObject){
-                parseElementsValues(elemheirarchy, values, (JSONObject) customElement);
+                parseElementsValues(elemheirarchy, values, elementName, (JSONObject) customElement);
             }else if(customElement instanceof JSONArray){
-                parseArrayValues(elemheirarchy, values, (JSONArray) customElement);
+                parseArrayValues(elemheirarchy, values, elementName, (JSONArray) customElement);
             }/*else{
                 String customFiledHeirarchy = elemheirarchy.stream().collect(Collectors.joining("-"));
                 values.put(customFiledHeirarchy +"_" +(elemInx +1) + "-"+ ((JSONObject)customElement).get("group"),
@@ -126,10 +124,10 @@ public class JsonParser {
 
     private void parseCustomFieldValues(JSONArray elementArray,
                                         LinkedList<String> elemheirarchy, Map<String, Object> values){
-        String customFiledHeirarchy = elemheirarchy.stream().collect(Collectors.joining("-"));
+        String customFiledHeirarchy = elemheirarchy.stream().collect(Collectors.joining("_"));
         for(int elemInx =0; elemInx < elementArray.length(); elemInx++){
             var customElement = (JSONObject) elementArray.get(elemInx);
-            values.put(customFiledHeirarchy +"_" +(elemInx +1) + "-"+ customElement.optString("group"),
+            values.put(customFiledHeirarchy +"_" +(elemInx +1) + "_"+ customElement.optString("group"),
                     customElement.optString("value"));
         }
         elemheirarchy.removeLast();
